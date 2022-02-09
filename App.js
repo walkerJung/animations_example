@@ -1,91 +1,85 @@
-import React, { useRef, useState } from "react";
-import {
-  Animated,
-  Dimensions,
-  Easing,
-  Pressable,
-  TouchableOpacity,
-} from "react-native";
+import React, { useRef } from "react";
+import { Animated, PanResponder, View } from "react-native";
 import styled from "styled-components/native";
+import { Ionicons } from "@expo/vector-icons";
 
 const Container = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
+  background-color: #00a8ff;
 `;
-const Box = styled.View`
-  background-color: tomato;
-  width: 200px;
-  height: 200px;
-`;
-const AnimatedBox = Animated.createAnimatedComponent(Box);
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const Card = styled(Animated.createAnimatedComponent(View))`
+  background-color: white;
+  width: 300px;
+  height: 300px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 12px;
+  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2);
+`;
 
 export default function App() {
-  const POSITION = useRef(
-    new Animated.ValueXY({
-      x: -SCREEN_WIDTH / 2 + 100,
-      y: -SCREEN_HEIGHT / 2 + 100,
+  // Values
+  const scale = useRef(new Animated.Value(1)).current;
+  const position = useRef(new Animated.Value(0)).current;
+  const rotation = position.interpolate({
+    inputRange: [-250, 250],
+    outputRange: ["-15deg", "15deg"],
+  });
+  // Animations
+  const onPressOut = Animated.spring(scale, {
+    toValue: 1,
+    useNativeDriver: true,
+  });
+  const onPressIn = Animated.spring(scale, {
+    toValue: 0.95,
+    useNativeDriver: true,
+  });
+  const goCenter = Animated.spring(position, {
+    toValue: 0,
+    useNativeDriver: true,
+  });
+  // Pan Responders
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, { dx }) => {
+        position.setValue(dx);
+      },
+      onPanResponderGrant: () => onPressIn.start(),
+      onPanResponderRelease: (_, { dx }) => {
+        if (dx < -320) {
+          Animated.spring(position, {
+            toValue: -500,
+            useNativeDriver: true,
+          }).start();
+        } else if (dx > 320) {
+          Animated.spring(position, {
+            toValue: 500,
+            useNativeDriver: true,
+          }).start();
+        } else {
+          Animated.parallel([onPressOut, goCenter]).start();
+        }
+      },
     })
   ).current;
-  const topLeft = Animated.timing(POSITION, {
-    toValue: {
-      x: -SCREEN_WIDTH / 2 + 100,
-      y: -SCREEN_HEIGHT / 2 + 100,
-    },
-    useNativeDriver: false,
-  });
-  const bottomLeft = Animated.timing(POSITION, {
-    toValue: {
-      x: -SCREEN_WIDTH / 2 + 100,
-      y: SCREEN_HEIGHT / 2 - 100,
-    },
-    useNativeDriver: false,
-  });
-  const bottomRight = Animated.timing(POSITION, {
-    toValue: {
-      x: SCREEN_WIDTH / 2 - 100,
-      y: SCREEN_HEIGHT / 2 - 100,
-    },
-    useNativeDriver: false,
-  });
-  const topRight = Animated.timing(POSITION, {
-    toValue: {
-      x: SCREEN_WIDTH / 2 - 100,
-      y: -SCREEN_HEIGHT / 2 + 100,
-    },
-    useNativeDriver: false,
-  });
-  const moveUp = () => {
-    Animated.loop(
-      Animated.sequence([bottomLeft, bottomRight, topRight, topLeft])
-    ).start();
-  };
-  const rotation = POSITION.y.interpolate({
-    inputRange: [-300, 300],
-    outputRange: ["-360deg", "360deg"],
-  });
-  const borderRadius = POSITION.y.interpolate({
-    inputRange: [-300, 300],
-    outputRange: [100, 0],
-  });
-  const bgColor = POSITION.y.interpolate({
-    inputRange: [-300, 300],
-    outputRange: ["rgb(255, 99, 71)", "rgb(71, 166, 255)"],
-  });
-  console.log(...POSITION.getTranslateTransform());
   return (
     <Container>
-      <Pressable onPress={moveUp}>
-        <AnimatedBox
-          style={{
-            borderRadius,
-            backgroundColor: bgColor,
-            transform: [...POSITION.getTranslateTransform()],
-          }}
-        />
-      </Pressable>
+      <Card
+        {...panResponder.panHandlers}
+        style={{
+          transform: [
+            { scale },
+            { translateX: position },
+            { rotateZ: rotation },
+          ],
+        }}
+      >
+        <Ionicons name="pizza" color="#192a56" size={98} />
+      </Card>
     </Container>
   );
 }
